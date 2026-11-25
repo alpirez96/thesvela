@@ -244,6 +244,12 @@ button {
   outline: none;
   box-shadow: 0 1px 0 0 var(--brass-light);
 }
+/* iOS zooms into fields under 16px — keep the design's 13px on desktop only */
+@media (max-width: 640px) {
+  .sv-in {
+    font-size: 16px;
+  }
+}
 .sv-in[aria-invalid="true"] {
   border-bottom-color: var(--brass-pale);
 }
