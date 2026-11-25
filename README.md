@@ -1,4 +1,4 @@
-# SVELA — thesvela.vercel.app
+# SVELA — thesvela-ten.vercel.app
 
 SVELA Portable marine lantern sitesi. Next.js 16 (App Router) + TypeScript, Vercel'de yayınlanır.
 Ödeme: **iyzico Checkout Form** (iyzico'nun barındırdığı güvenli ödeme sayfası).
@@ -31,7 +31,8 @@ npm run dev                  # http://localhost:3000
 | `IYZICO_API_KEY` | iyzico API anahtarı |
 | `IYZICO_SECRET_KEY` | iyzico güvenlik anahtarı |
 | `IYZICO_BASE_URL` | Test: `https://sandbox-api.iyzipay.com` · Canlı: `https://api.iyzipay.com` |
-| `NEXT_PUBLIC_SITE_URL` | `https://thesvela.vercel.app` (iyzico dönüş adresi bundan üretilir) |
+| `NEXT_PUBLIC_SITE_URL` | `https://thesvela-ten.vercel.app` (iyzico dönüş adresi bundan üretilir; özel alan adına geçince güncelleyin) |
+| `EUR_TRY_FALLBACK_RATE` | (opsiyonel) TCMB ve ECB'ye ulaşılamazsa kullanılacak kur, ör. `55.30` |
 | `RESEND_API_KEY` | (opsiyonel) iletişim formu e-postaları için |
 | `ENQUIRY_TO_EMAIL` | (opsiyonel) iletişim formunun gideceği adres |
 | `ENQUIRY_FROM_EMAIL` | (opsiyonel) gönderici, ör. `SVELA <hello@thesvela.com>` |
@@ -40,14 +41,18 @@ Anahtarlar olmadan site açılır; ödeme adımı "Payments are not configured y
 
 ## Fiyat / para birimi
 
-`src/lib/product.ts` → `unitPrice` ve `currency`. Varsayılan tasarımdaki gibi **€ 1.480**.
-iyzico hesabınızda EUR tahsilat açık değilse `currency: "TRY"` ve TL fiyatı girin.
+Fiyat **EUR** olarak `src/lib/product.ts` → `unitPrice` alanında tutulur (tasarımdaki gibi **€ 1.480**).
+Ziyaretçi fiyatın yanındaki **EUR / TRY** anahtarıyla TL'ye geçebilir: TL fiyatı EUR fiyata
+endekslidir — TCMB günlük EUR **döviz satış** kuru × EUR fiyat, tam liraya yukarı yuvarlanır
+(TCMB'ye ulaşılamazsa ECB kuru, o da yoksa `EUR_TRY_FALLBACK_RATE`). Kur 1 saat önbelleğe alınır;
+ödeme tutarı sunucuda yeniden hesaplanır ve iyzico'ya seçilen para biriminde gönderilir.
 
-## Vercel'e bağlama (thesvela.vercel.app)
+EUR ile tahsilat için iyzico üye işyeri hesabınızda yabancı para birimi (EUR) açık olmalıdır.
 
-1. Vercel → mevcut **thesvela** projesi → **Settings → Git → Connect Git Repository** →
-   `alpirez96/thesvela`.
-2. **Settings → Git → Production Branch**: `main`.
-3. Ortam değişkenlerini ekleyin, ardından **Deployments → Redeploy**.
+## Vercel
 
-Framework preset otomatik olarak **Next.js** algılanır; ek ayar gerekmez.
+Proje `alpirez96/thesvela` reposuna bağlı (https://thesvela-ten.vercel.app). Production,
+repodaki **varsayılan branch**'ten (Settings → Git → Production Branch) yayınlanır; o branch'e
+her push otomatik deploy tetikler. Framework preset: **Next.js** (otomatik algılanır).
+
+Ortam değişkenlerini ekledikten / değiştirdikten sonra **Deployments → Redeploy** yapın.

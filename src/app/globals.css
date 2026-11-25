@@ -263,6 +263,54 @@ select.sv-in option {
   color: var(--linen);
 }
 
+/* ── Currency switch (EUR / TRY) ───────────────────────────── */
+
+.sv-cur {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+.sv-cur__seg {
+  display: inline-flex;
+  border: 1px solid var(--hair);
+  border-radius: 3px;
+  padding: 2px;
+}
+.sv-cur__btn {
+  min-width: 44px;
+  height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 2px;
+  background: none;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  transition:
+    background 250ms var(--ease),
+    color 250ms var(--ease);
+}
+.sv-cur__btn:hover:not(:disabled) {
+  color: var(--linen);
+}
+.sv-cur__btn[aria-pressed="true"] {
+  background: rgba(201, 153, 47, 0.16);
+  color: var(--brass-light);
+}
+.sv-cur__btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+.sv-cur__rate {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
 /* ── Fixed chrome (header, rail, counter) ──────────────────── */
 
 .sv-header {

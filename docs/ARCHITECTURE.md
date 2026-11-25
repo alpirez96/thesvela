@@ -17,13 +17,16 @@ src/
     api/checkout/         initialise iyzico Checkout Form, return paymentPageUrl
     api/iyzico/callback/  iyzico POSTs the token here → retrieve result → 303 redirect
     api/enquiry/          contact form (email via Resend when configured)
+    api/rates/            today's EUR/TRY rate for display
   components/
     chrome/               SiteChrome (header, rail, counter), Cursor
     sections/             Hero, WaysToUse, Aboard, Lantern, Close
     commerce/             CartDrawer, CheckoutForm, ...
   lib/
-    product.ts            catalog — the only source of prices
-    cart.tsx              bag state (localStorage), drawer open/close
+    product.ts            catalog — the only source of prices (EUR base)
+    pricing.ts            EUR/TRY: TRY unit = ceil(EUR unit × EUR/TRY rate)
+    rates.ts              server: EUR/TRY rate — TCMB ForexSelling → ECB → env fallback (1h cache)
+    cart.tsx              bag state + chosen currency (localStorage), drawer open/close
     format.ts             "€ 1.480" price formatting
     iyzico.ts             IYZWSv2-signed client (initialize / retrieve)
   styles/
@@ -42,6 +45,15 @@ src/
 5. iyzico POSTs `token` to `/api/iyzico/callback?order=<id>`; the server calls
    `/payment/iyzipos/checkoutform/auth/ecom/detail`, checks `paymentStatus === "SUCCESS"`
    and that `basketId` matches, then redirects to `/order/success` or `/order/failed`.
+
+## Currencies
+
+Prices are set in EUR. Buyers can switch to TRY (EUR / TRY switch next to the
+price, in the bag and at checkout). The TRY price is indexed to the EUR price at
+the Central Bank of Türkiye's EUR forex-selling rate (fallback: ECB rate via
+Frankfurter, then `EUR_TRY_FALLBACK_RATE`), rounded up to the whole lira.
+`/api/checkout` recomputes the amount server-side with the same rate source and
+charges iyzico in the chosen currency.
 
 ## Design rules (from SVELA Design System v6)
 

@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { getProduct, type Product } from "./product";
+import { isSaleCurrency, unitPriceIn, type RateInfo, type SaleCurrency } from "./pricing";
 
 /** What is stored and sent to the server: ids and quantities only. */
 export interface CartLine {
@@ -11,6 +12,9 @@ export interface CartLine {
 
 export interface CartItem extends CartLine {
   product: Product;
+  /** Unit price in the active currency. */
+  unitPrice: number;
+  /** unitPrice × qty in the active currency. */
   lineTotal: number;
 }
 
@@ -20,7 +24,17 @@ interface CartContextValue {
   lines: CartLine[];
   items: CartItem[];
   count: number;
+  /** Sum of line totals in the active currency. */
   subtotal: number;
+  /** Active currency (falls back to EUR while no EUR/TRY rate is known). */
+  currency: SaleCurrency;
+  setCurrency: (c: SaleCurrency) => void;
+  /** Today's EUR/TRY rate, or null if not loaded / unavailable. */
+  rate: RateInfo | null;
+  /** True when TRY can be offered (a rate is known). */
+  tryAvailable: boolean;
+  /** Unit price of any product in the active currency. */
+  priceOf: (product: Product) => number;
   add: (id: string, qty: number) => void;
   setQty: (id: string, qty: number) => void;
   remove: (id: string) => void;
@@ -31,6 +45,7 @@ interface CartContextValue {
 }
 
 const STORAGE_KEY = "svela.bag.v1";
+const CURRENCY_KEY = "svela.currency.v1";
 const CartContext = createContext<CartContextValue | null>(null);
 
 function sanitize(raw: unknown): CartLine[] {
@@ -52,15 +67,43 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [lines, setLines] = useState<CartLine[]>([]);
   const [ready, setReady] = useState(false);
   const [isOpen, setOpen] = useState(false);
+  const [wanted, setWanted] = useState<SaleCurrency>("EUR");
+  const [rate, setRate] = useState<RateInfo | null>(null);
 
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
       if (raw) setLines(sanitize(JSON.parse(raw)));
+      const cur = window.localStorage.getItem(CURRENCY_KEY);
+      if (isSaleCurrency(cur)) setWanted(cur);
     } catch {
       /* storage unavailable — start empty */
     }
     setReady(true);
+  }, []);
+
+  useEffect(() => {
+    const ctl = new AbortController();
+    fetch("/api/rates", { signal: ctl.signal })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { TRY?: number; source?: string; date?: string } | null) => {
+        if (d && typeof d.TRY === "number" && d.TRY > 0) {
+          setRate({ rate: d.TRY, source: d.source ?? "", date: d.date ?? "" });
+        }
+      })
+      .catch(() => {
+        /* no rate → EUR only */
+      });
+    return () => ctl.abort();
+  }, []);
+
+  const setCurrency = useCallback((c: SaleCurrency) => {
+    setWanted(c);
+    try {
+      window.localStorage.setItem(CURRENCY_KEY, c);
+    } catch {
+      /* ignore */
+    }
   }, []);
 
   useEffect(() => {
@@ -96,10 +139,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const close = useCallback(() => setOpen(false), []);
 
   const value = useMemo<CartContextValue>(() => {
+    const tryAvailable = rate !== null;
+    const currency: SaleCurrency = wanted === "TRY" && !tryAvailable ? "EUR" : wanted;
+    const priceOf = (product: Product) => unitPriceIn(product, currency, rate?.rate) ?? product.unitPrice;
     const items: CartItem[] = [];
     for (const l of lines) {
       const product = getProduct(l.id);
-      if (product) items.push({ ...l, product, lineTotal: product.unitPrice * l.qty });
+      if (!product) continue;
+      const unitPrice = priceOf(product);
+      items.push({ ...l, product, unitPrice, lineTotal: unitPrice * l.qty });
     }
     return {
       ready,
@@ -107,6 +155,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       items,
       count: items.reduce((n, i) => n + i.qty, 0),
       subtotal: items.reduce((n, i) => n + i.lineTotal, 0),
+      currency,
+      setCurrency,
+      rate,
+      tryAvailable,
+      priceOf,
       add,
       setQty,
       remove,
@@ -115,7 +168,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       open,
       close,
     };
-  }, [lines, ready, isOpen, add, setQty, remove, clear, open, close]);
+  }, [lines, ready, isOpen, wanted, rate, setCurrency, add, setQty, remove, clear, open, close]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }

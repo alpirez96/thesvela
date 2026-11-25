@@ -3,8 +3,10 @@
  * at what price. The server recomputes every total from this file; prices
  * sent by the browser are never trusted.
  *
- * To change the price or currency, edit it here. iyzico accepts TRY by
- * default; EUR/USD/GBP must be enabled on the merchant account.
+ * Prices are set in EUR (the base currency). Buyers can also pay in TRY:
+ * the TRY price is indexed to the EUR price at the day's EUR/TRY rate
+ * (see lib/pricing.ts and lib/rates.ts). EUR collection must be enabled on
+ * the iyzico merchant account.
  */
 
 export type CurrencyCode = "TRY" | "EUR" | "USD" | "GBP";
@@ -13,8 +15,9 @@ export interface Product {
   id: string;
   name: string;
   tagline: string;
-  /** Unit price, VAT included. */
+  /** Unit price in EUR, VAT included. */
   unitPrice: number;
+  /** Base currency of unitPrice — always EUR (TRY is derived). */
   currency: CurrencyCode;
   image: string;
   /** iyzico basket category. */
